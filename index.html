@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>積木遊戲工坊</title>
+<!-- Blockly 核心、內建積木、JS 產生器、繁中語系（CDN，鎖定 v12 大版號） -->
+<script src="https://unpkg.com/blockly@12/blockly_compressed.js"></script>
+<script src="https://unpkg.com/blockly@12/blocks_compressed.js"></script>
+<script src="https://unpkg.com/blockly@12/javascript_compressed.js"></script>
+<script src="https://unpkg.com/blockly@12/msg/zh-hant.js"></script>
+<!-- LZ-String：作品壓縮成分享網址用 -->
+<script src="https://unpkg.com/lz-string@1.5.0/libs/lz-string.min.js"></script>
+<style>
+  :root {
+    --scratch-orange: #ff8c1a;
+    --scratch-blue: #4c97ff;
+    --header-h: 52px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; font-family: "Microsoft JhengHei", "Noto Sans TC", sans-serif; }
+  body { display: flex; flex-direction: column; background: #e5f0ff; overflow: hidden; }
+
+  /* ── 頂部工具列 ── */
+  header {
+    height: var(--header-h); flex: 0 0 auto;
+    display: flex; align-items: center; gap: 8px; padding: 0 12px;
+    background: var(--scratch-orange); color: #fff;
+  }
+  header .logo { font-weight: bold; font-size: 18px; margin-right: 4px; }
+  header input#projectName {
+    width: 180px; padding: 6px 8px; border: none; border-radius: 6px; font-size: 14px;
+  }
+  header button {
+    padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer;
+    background: rgba(255,255,255,.2); color: #fff; font-size: 14px;
+  }
+  header button:hover { background: rgba(255,255,255,.35); }
+
+  /* ── 主區：左積木、右舞台 ── */
+  main { flex: 1; display: flex; min-height: 0; }
+  #blocklyArea { flex: 1; min-width: 0; position: relative; }
+  #blocklyDiv { position: absolute; inset: 0; }
+
+  aside {
+    flex: 0 0 504px; display: flex; flex-direction: column; gap: 8px;
+    padding: 8px; background: #d9e6f7; overflow-y: auto;
+  }
+  /* 舞台控制列 */
+  .stage-bar { display: flex; align-items: center; gap: 8px; }
+  .stage-bar button {
+    width: 38px; height: 38px; border: none; border-radius: 8px; cursor: pointer; font-size: 18px;
+    background: #fff;
+  }
+  #btnRun { color: #2bb673; }
+  #btnStop { color: #e64d4d; }
+  .stage-bar .hint { font-size: 12px; color: #557; }
+
+  #stageWrap { position: relative; width: 480px; height: 360px; }
+  canvas#stage {
+    width: 480px; height: 360px; background: #fff;
+    border: 2px solid #b3c7e6; border-radius: 8px; display: block;
+  }
+
+  /* 角色清單 */
+  .sprite-panel { background: #fff; border-radius: 8px; padding: 8px; }
+  .sprite-panel h3 { margin: 0 0 6px; font-size: 14px; color: #456; }
+  #spriteList { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sprite-card {
+    width: 64px; padding: 4px; border: 2px solid transparent; border-radius: 8px;
+    text-align: center; cursor: pointer; background: #f2f6fc; position: relative;
+  }
+  .sprite-card.selected { border-color: var(--scratch-blue); background: #e3eeff; }
+  .sprite-card .face { font-size: 28px; }
+  .sprite-card .name { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sprite-card .del {
+    position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; line-height: 16px;
+    border-radius: 50%; background: #e64d4d; color: #fff; font-size: 11px; cursor: pointer; display: none;
+  }
+  .sprite-card.selected .del { display: block; }
+  .sprite-add {
+    width: 64px; height: 64px; border: 2px dashed #9bb; border-radius: 8px;
+    font-size: 24px; color: #79a; background: none; cursor: pointer;
+  }
+
+  /* 角色屬性 */
+  .props { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; font-size: 12px; color: #345; }
+  .props label { display: flex; align-items: center; gap: 3px; }
+  .props input[type=number] { width: 56px; padding: 3px; border: 1px solid #ccd; border-radius: 4px; }
+
+  /* 播放模式遮罩（分享連結開啟時） */
+  #playOverlay {
+    position: fixed; inset: 0; background: #16243a; color: #fff; z-index: 1000; /* 要壓過 Blockly 工具箱 */
+    display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  }
+  #playOverlay.active { display: flex; }
+  #playOverlay h1 { margin: 0; font-size: 26px; }
+  #playOverlay .stage-slot { position: relative; }
+  #playOverlay button {
+    padding: 10px 22px; border: none; border-radius: 10px; font-size: 17px; cursor: pointer;
+  }
+  #btnPlayBig { background: #2bb673; color: #fff; }
+  #btnEditShared { background: rgba(255,255,255,.18); color: #fff; font-size: 14px; }
+
+  /* toast 提示 */
+  #toast {
+    position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+    background: #333; color: #fff; padding: 10px 18px; border-radius: 20px; font-size: 14px;
+    opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 99;
+  }
+  #toast.show { opacity: 1; }
+
+  /* 開啟作品對話框 */
+  dialog#openDialog { border: none; border-radius: 12px; padding: 16px; min-width: 320px; }
+  dialog#openDialog h3 { margin: 0 0 10px; }
+  .proj-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #eee; }
+  .proj-row .pname { flex: 1; }
+  .proj-row button { padding: 4px 10px; border: none; border-radius: 6px; cursor: pointer; }
+  .proj-row .open { background: var(--scratch-blue); color: #fff; }
+  .proj-row .remove { background: #eee; }
+</style>
+</head>
+<body>
+  <header>
+    <span class="logo">🧩 積木遊戲工坊</span>
+    <input id="projectName" value="我的遊戲" title="作品名稱">
+    <button id="btnNew" title="開新作品">➕ 新作品</button>
+    <button id="btnSave" title="存到瀏覽器">💾 儲存</button>
+    <button id="btnOpen" title="開啟已儲存的作品">📂 開啟</button>
+    <button id="btnShare" title="複製分享連結">🔗 分享</button>
+  </header>
+
+  <main>
+    <div id="blocklyArea"><div id="blocklyDiv"></div></div>
+
+    <aside>
+      <div class="stage-bar">
+        <button id="btnRun" title="執行">▶</button>
+        <button id="btnStop" title="停止">⏹</button>
+        <span class="hint">未執行時可直接拖曳舞台上的角色擺位置</span>
+      </div>
+      <div id="stageWrap"><canvas id="stage" width="480" height="360"></canvas></div>
+
+      <div class="sprite-panel">
+        <h3>角色</h3>
+        <div id="spriteList"></div>
+        <div class="props" id="spriteProps">
+          <label>x <input type="number" id="propX"></label>
+          <label>y <input type="number" id="propY"></label>
+          <label>方向 <input type="number" id="propDir"></label>
+          <label>大小% <input type="number" id="propSize"></label>
+          <label><input type="checkbox" id="propVisible"> 顯示</label>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- 分享連結開啟時的播放模式 -->
+  <div id="playOverlay">
+    <h1 id="playTitle">作品</h1>
+    <div class="stage-slot" id="playStageSlot"></div>
+    <button id="btnPlayBig">▶ 開始遊戲</button>
+    <button id="btnEditShared">✏️ 編輯這個作品</button>
+  </div>
+
+  <dialog id="openDialog">
+    <h3>📂 已儲存的作品</h3>
+    <div id="projList"></div>
+    <p style="text-align:right;margin:10px 0 0"><button onclick="this.closest('dialog').close()">關閉</button></p>
+  </dialog>
+
+  <div id="toast"></div>
+
+  <script src="js/engine.js"></script>
+  <script src="js/blocks.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
