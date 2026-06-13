@@ -220,6 +220,10 @@ const Tutorial = (() => {
     q('.tut-next').textContent = s.nextLabel || '下一步 ▶';
     q('.tut-done').style.display = 'none';
     window.UIVoice?.annotate(layer); // 教學卡文字補注音
+    // 自動唸出標題與說明文字（去除 emoji 讓 TTS 朗讀更順暢）
+    window.UIVoice?.speakUI(
+      (s.title + '。' + s.text).replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '')
+    );
     updateSpot();
     updateCheck();
   }
