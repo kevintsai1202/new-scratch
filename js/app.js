@@ -56,6 +56,8 @@ const App = (() => {
       enterPlayMode();
     } else {
       setProject(Storage.loadAutosave() || defaultProject());
+      Mobile.maybeShowEditorTip();   // 手機開編輯器 → 提示建議用電腦
+      Tutorial.maybeAutoStart();     // 第一次來 → 自動開始闖關教學
     }
 
     // 在同一分頁貼上別人的分享連結 → 直接重載生效
@@ -149,12 +151,33 @@ const App = (() => {
   function addSprite() {
     const used = new Set(project.sprites.map(s => s.costume));
     const costume = DEFAULT_COSTUMES.find(c => !used.has(c)) || '⭐';
-    const sp = makeSprite(costume, `角色${project.sprites.length + 1}`);
+    addSpriteQuick(costume, `角色${project.sprites.length + 1}`);
+  }
+
+  /** 以指定造型/名稱新增角色（教學的 ✨幫手也會呼叫），回傳新角色設定 */
+  function addSpriteQuick(costume, name) {
+    const sp = makeSprite(costume, name);
     // 新角色錯開位置，避免疊在一起
     sp.x = (project.sprites.length % 4) * 60 - 90;
     sp.y = -Math.floor(project.sprites.length / 4) * 60 + 60;
     project.sprites.push(sp);
     selectSprite(sp.id);
+    scheduleAutosave();
+    return sp;
+  }
+
+  /** 直接設定某角色的積木程式（教學的 ✨幫手用）；選取中則同步重載畫面 */
+  function setSpriteWorkspace(id, state) {
+    const sp = project.sprites.find(s => s.id === id);
+    if (!sp) return;
+    sp.workspace = state;
+    if (id === selectedSpriteId) {
+      loadingWorkspace = true;
+      try {
+        workspace.clear();
+        Blockly.serialization.workspaces.load(state, workspace);
+      } finally { loadingWorkspace = false; }
+    }
     scheduleAutosave();
   }
 
@@ -325,6 +348,7 @@ const App = (() => {
   function bindToolbar() {
     $('btnRun').addEventListener('click', run);
     $('btnStop').addEventListener('click', stopRun);
+    $('btnTutorial').addEventListener('click', () => Tutorial.start());
 
     $('projectName').addEventListener('change', () => {
       project.name = $('projectName').value.trim() || '未命名';
@@ -388,6 +412,7 @@ const App = (() => {
     $('playTitle').textContent = `🎮 ${project.name}`;
     $('playStageSlot').appendChild($('stageWrap')); // 把舞台搬進遮罩
     $('playOverlay').classList.add('active');
+    Mobile.onEnterPlayMode(); // 手機：縮放舞台＋建立虛擬按鍵
     $('btnPlayBig').onclick = run;
     $('btnEditShared').onclick = () => {
       stopRun();
@@ -396,6 +421,7 @@ const App = (() => {
       const aside = document.querySelector('aside');
       aside.insertBefore($('stageWrap'), aside.querySelector('.sprite-panel'));
       history.replaceState(null, '', location.pathname); // 清掉 hash，避免重整又進播放模式
+      Mobile.onExitPlayMode(); // 還原舞台縮放
       scheduleAutosave();
     };
   }
@@ -432,6 +458,7 @@ const App = (() => {
   // 對外介面（blocks.js 的動態下拉與測試會用到）
   return {
     spriteOptions, run, stopRun,
+    addSpriteQuick, setSpriteWorkspace, // 教學 ✨幫手用
     get project() { return project; },
     get runtime() { return currentRuntime; }, // e2e 驗證執行期狀態用
   };

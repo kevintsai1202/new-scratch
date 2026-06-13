@@ -56,6 +56,8 @@ const TEST_WORKSPACE = {
 
 const browser = await chromium.launch();
 const ctx = await browser.newContext();
+// 本測試聚焦核心流程：預先標記「教學已完成」，避免首次自動教學遮罩擋住操作
+await ctx.addInitScript(() => localStorage.setItem('scratchy.tutorialDone', '1'));
 const errors = []; // 收集所有頁面的 console error 與未捕捉例外
 const watch = (page) => {
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));

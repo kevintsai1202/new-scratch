@@ -48,6 +48,24 @@ await page.waitForSelector('#playOverlay.active');
 await page.waitForTimeout(300);
 await page.screenshot({ path: join(OUT, 'play-mode.png') });
 
-console.log('截圖已輸出：e2e/shots/editor.png、e2e/shots/play-mode.png');
+// 兒童教學截圖（全新使用者自動開始，停在第 1 關放積木）
+const tctx = await browser.newContext({ viewport: { width: 1366, height: 800 } });
+const tpage = await tctx.newPage();
+await tpage.goto(`http://127.0.0.1:${PORT}/`);
+await tpage.waitForSelector('#tutorialCard');
+await tpage.click('.tut-next'); // 積木箱
+await tpage.waitForTimeout(400);
+await tpage.screenshot({ path: join(OUT, 'tutorial.png') });
+
+// 手機播放模式截圖（iPhone 模擬＋虛擬按鍵）
+const { devices } = await import('playwright');
+const mctx = await browser.newContext({ ...devices['iPhone 13'] });
+const mpage = await mctx.newPage();
+await mpage.goto(shareUrl.replace(/^https?:\/\/[^/]+\//, `http://127.0.0.1:${PORT}/`));
+await mpage.waitForSelector('#playOverlay.active');
+await mpage.waitForTimeout(400);
+await mpage.screenshot({ path: join(OUT, 'mobile-play.png') });
+
+console.log('截圖已輸出：e2e/shots/{editor,play-mode,tutorial,mobile-play}.png');
 await browser.close();
 server.close();

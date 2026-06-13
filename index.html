@@ -94,6 +94,8 @@
     display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
   }
   #playOverlay.active { display: flex; }
+  /* 觸控裝置：底部保留虛擬按鍵高度，內容置中時不會被蓋住 */
+  #playOverlay.touch { padding-bottom: 200px; }
   #playOverlay h1 { margin: 0; font-size: 26px; }
   #playOverlay .stage-slot { position: relative; }
   #playOverlay button {
@@ -111,6 +113,74 @@
   #toast.show { opacity: 1; }
 
   /* 開啟作品對話框 */
+  /* ── 兒童闖關教學 ── */
+  #tutorialLayer { position: fixed; inset: 0; pointer-events: none; z-index: 2000; }
+  #tutorialSpot {
+    position: fixed; border: 3px dashed #ffbf00; border-radius: 12px;
+    box-shadow: 0 0 0 9999px rgba(10, 25, 50, .45); /* 聚光燈：其餘區域變暗 */
+    pointer-events: none; transition: all .3s ease;
+  }
+  #tutorialCard {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    width: min(560px, 94vw); background: #fff; border-radius: 16px; padding: 14px 20px;
+    pointer-events: auto; box-shadow: 0 8px 30px rgba(0,0,0,.35); border: 3px solid var(--scratch-orange);
+  }
+  #tutorialCard .tut-badge {
+    display: inline-block; background: var(--scratch-orange); color: #fff;
+    border-radius: 12px; padding: 2px 12px; font-size: 12px; font-weight: bold;
+  }
+  #tutorialCard .tut-title { margin: 8px 0 4px; font-size: 19px; color: #234; }
+  #tutorialCard .tut-text { margin: 0 0 8px; font-size: 14px; line-height: 1.7; color: #345; }
+  #tutorialCard .tut-done { color: #2bb673; font-weight: bold; font-size: 14px; margin-bottom: 6px; }
+  #tutorialCard .tut-btns { display: flex; gap: 8px; align-items: center; }
+  #tutorialCard .tut-btns button { border: none; border-radius: 10px; padding: 9px 16px; font-size: 15px; cursor: pointer; }
+  #tutorialCard .tut-help { background: #9966ff; color: #fff; }
+  #tutorialCard .tut-next { background: #2bb673; color: #fff; font-weight: bold; }
+  #tutorialCard .tut-next:disabled { background: #ccd5e0; cursor: not-allowed; }
+  #tutorialCard .tut-skip { background: none; color: #99a; margin-left: auto; font-size: 12px; }
+
+  /* ── 手機播放模式：虛擬按鍵 ── */
+  #gamepad {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 20px calc(14px + env(safe-area-inset-bottom));
+    pointer-events: none; /* 只有按鍵本身可點 */
+  }
+  #gamepad .dpad {
+    display: grid; grid-template-areas: ". up ." "left . right" ". down ."; gap: 6px;
+  }
+  #gamepad .pad-btn {
+    pointer-events: auto; width: 54px; height: 54px; border: none; border-radius: 14px;
+    background: rgba(255,255,255,.22); color: #fff; font-size: 20px;
+    touch-action: none; user-select: none; -webkit-user-select: none;
+  }
+  #gamepad .pad-btn.held { background: rgba(255,255,255,.55); }
+  #gamepad .pad-up { grid-area: up; } #gamepad .pad-down { grid-area: down; }
+  #gamepad .pad-left { grid-area: left; } #gamepad .pad-right { grid-area: right; }
+  #gamepad .pad-action { width: 78px; height: 78px; border-radius: 50%; font-size: 14px; }
+
+  /* ── 手機編輯模式：提示橫幅 + 直式排版 ── */
+  #mobileTip {
+    position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 500;
+    background: #234; color: #fff; border-radius: 12px; padding: 10px 14px;
+    font-size: 13px; display: flex; gap: 10px; align-items: center;
+  }
+  #mobileTip button {
+    margin-left: auto; border: none; border-radius: 8px; padding: 6px 12px;
+    background: var(--scratch-orange); color: #fff;
+  }
+  @media (max-width: 900px) {
+    body { overflow: auto; }
+    main { flex-direction: column-reverse; }
+    aside { flex: 0 0 auto; width: 100%; align-items: center; }
+    #stageWrap { width: min(480px, 100%); }
+    canvas#stage { width: 100%; height: auto; }
+    #blocklyArea { min-height: 55vh; }
+    .stage-bar .hint { display: none; }
+    header { flex-wrap: wrap; height: auto; padding: 8px 10px; }
+    header input#projectName { width: 120px; }
+  }
+
   dialog#openDialog { border: none; border-radius: 12px; padding: 16px; min-width: 320px; }
   dialog#openDialog h3 { margin: 0 0 10px; }
   .proj-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #eee; }
@@ -128,6 +198,7 @@
     <button id="btnSave" title="存到瀏覽器">💾 儲存</button>
     <button id="btnOpen" title="開啟已儲存的作品">📂 開啟</button>
     <button id="btnShare" title="複製分享連結">🔗 分享</button>
+    <button id="btnTutorial" title="重新看一次闖關教學">🎓 教學</button>
   </header>
 
   <main>
@@ -174,6 +245,8 @@
   <script src="js/engine.js"></script>
   <script src="js/blocks.js"></script>
   <script src="js/storage.js"></script>
+  <script src="js/mobile.js"></script>
+  <script src="js/tutorial.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
