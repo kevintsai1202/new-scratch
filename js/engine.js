@@ -145,8 +145,23 @@ class Runtime {
     });
   }
 
-  /** 停止本次執行：殘留執行緒於下個 tick 終止 */
-  stop() { this.stopped = true; }
+  /** 停止本次執行：殘留執行緒於下個 tick 終止，並停掉語音 */
+  stop() {
+    this.stopped = true;
+    if (typeof SoundFX !== 'undefined') SoundFX.cancelSpeech();
+  }
+
+  /**
+   * 唸出文字（音效積木）：wait=true 時等唸完才繼續，
+   * 唸完後若已被 ⏹ 停止則拋出 StopSignal 終止該執行緒。
+   */
+  async speak(text, wait) {
+    const p = SoundFX.speak(text);
+    if (wait) {
+      await p;
+      if (this.stopped) throw new StopSignal();
+    }
+  }
 
   /**
    * 讓出一個畫格並檢查停止旗標。

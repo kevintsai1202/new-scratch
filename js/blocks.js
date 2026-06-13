@@ -11,7 +11,13 @@
   const Order = javascript.Order;
 
   /** Scratch 風格分類色 */
-  const C = { event: '#FFBF00', motion: '#4C97FF', looks: '#9966FF', control: '#FFAB19', sensing: '#5CB1D6' };
+  const C = { event: '#FFBF00', motion: '#4C97FF', looks: '#9966FF', control: '#FFAB19', sensing: '#5CB1D6', sound: '#D65CD6' };
+
+  /** 音效下拉選單（值對應 SoundFX 配方名） */
+  const SOUND_OPTIONS = [
+    ['啵', 'pop'], ['跳躍', 'jump'], ['金幣', 'coin'],
+    ['雷射', 'laser'], ['叮', 'ding'], ['爆炸', 'boom'],
+  ];
 
   /** 按鍵下拉選單選項（顯示文字, 程式值＝KeyboardEvent.key） */
   const KEY_OPTIONS = [
@@ -81,6 +87,19 @@
     { type: 'looks_costume', message0: '造型換成 %1',
       args0: [{ type: 'field_dropdown', name: 'COSTUME', options: COSTUME_OPTIONS }],
       previousStatement: null, nextStatement: null, colour: C.looks },
+
+    // ── 音效 ──
+    { type: 'sound_play', message0: '播放音效 %1',
+      args0: [{ type: 'field_dropdown', name: 'SOUND', options: SOUND_OPTIONS }],
+      previousStatement: null, nextStatement: null, colour: C.sound },
+    { type: 'sound_tts', message0: '唸出 %1',
+      args0: [{ type: 'input_value', name: 'TEXT' }],
+      previousStatement: null, nextStatement: null, colour: C.sound,
+      tooltip: '用自然語音唸出文字（不等唸完就繼續）' },
+    { type: 'sound_tts_wait', message0: '唸出 %1 直到結束',
+      args0: [{ type: 'input_value', name: 'TEXT' }],
+      previousStatement: null, nextStatement: null, colour: C.sound,
+      tooltip: '唸完才執行下一個積木' },
 
     // ── 控制 ──
     { type: 'control_wait', message0: '等待 %1 秒',
@@ -160,6 +179,12 @@
   G.forBlock['looks_set_size'] = (b, g) => `sprite.setSize(${num(g, b, 'SIZE', 100)});\n`;
   G.forBlock['looks_costume'] = (b) => `sprite.setCostume(${JSON.stringify(b.getFieldValue('COSTUME'))});\n`;
 
+  G.forBlock['sound_play'] = (b) => `SoundFX.play(${JSON.stringify(b.getFieldValue('SOUND'))});\n`;
+  G.forBlock['sound_tts'] = (b, g) =>
+    `runtime.speak(${g.valueToCode(b, 'TEXT', Order.NONE) || "''"}, false);\n`;
+  G.forBlock['sound_tts_wait'] = (b, g) =>
+    `await runtime.speak(${g.valueToCode(b, 'TEXT', Order.NONE) || "''"}, true);\n`;
+
   G.forBlock['control_wait'] = (b, g) => `await runtime.wait(${num(g, b, 'SECS', 1)});\n`;
   G.forBlock['control_repeat'] = (b, g) => {
     const body = g.statementToCode(b, 'DO');
@@ -229,6 +254,11 @@
         { kind: 'block', type: 'looks_hide' },
         { kind: 'block', type: 'looks_set_size', inputs: { SIZE: { shadow: { type: 'math_number', fields: { NUM: 100 } } } } },
         { kind: 'block', type: 'looks_costume' },
+      ]},
+      { kind: 'category', name: '音效', colour: C.sound, contents: [
+        { kind: 'block', type: 'sound_play' },
+        { kind: 'block', type: 'sound_tts', inputs: { TEXT: { shadow: { type: 'text', fields: { TEXT: '你好！' } } } } },
+        { kind: 'block', type: 'sound_tts_wait', inputs: { TEXT: { shadow: { type: 'text', fields: { TEXT: '遊戲開始！' } } } } },
       ]},
       { kind: 'category', name: '控制', colour: C.control, contents: [
         { kind: 'block', type: 'control_wait', inputs: { SECS: { shadow: { type: 'math_number', fields: { NUM: 1 } } } } },
