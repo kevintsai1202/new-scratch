@@ -125,6 +125,8 @@ const UIVoice = (() => {
       document.getElementById(id)?.setAttribute('data-speak', text);
     }
     annotate(document.body);
+    // 標注讓工具箱內容變寬變高，請 Blockly 重新計算版面
+    try { Blockly.svgResize(Blockly.getMainWorkspace()); } catch { /* 非編輯頁面可略過 */ }
 
     // 任何帶 data-speak 的元素被點到就唸（含之後動態加上的）
     document.addEventListener('click', (e) => {
